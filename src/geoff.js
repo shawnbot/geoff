@@ -199,8 +199,7 @@ if (!geoff) var geoff = {};
 				coord[0] < extent.min.lon ||
 				coord[1] < extent.min.lat ||
 				coord[0] > extent.max.lon ||
-				coord[1] > extent.max.lat
-			);
+				coord[1] > extent.max.lat);
 		};
 
 		// Returns true if the extent contains the provided extent
@@ -215,8 +214,7 @@ if (!geoff) var geoff = {};
 				extent.min.lon > other.max.lon ||
 				extent.min.lat > other.max.lat ||
 				extent.max.lon < other.min.lon ||
-				extent.max.lat < other.min.lat ||
-			);
+				extent.max.lat < other.min.lat);
 		};
 
 		// Get the intersection of two extents as a new extent object if they
@@ -404,6 +402,75 @@ if (!geoff) var geoff = {};
 			points.push([x, y]);
 		}
 		return points;
+	};
+
+	// Feature property getter
+	geoff.property = function(name) {
+		return function(feature) {
+			return feature.properties[name];
+		};
+	};
+
+	// Returns a *function* that gets the named property from the function's
+	// argument. Property names may contain dots to indicate recursive object
+	// values. To read a GeoJSON Point feature's latitude, for instance, you can
+	// use: geoff.read("geometry.coordinates.1")(feature);
+	geoff.read = function(prop) {
+		// TODO: support array accessor bracket notation: "geometry.coordinates[0]"
+		if (prop.indexOf(".") > -1) {
+			var parts = prop.split("."),
+					len = parts.length;
+			return function(o) {
+				var i = 0;
+				do {
+					o = o[parts[i]];
+				} while ((typeof o != "undefined") && ++i < len);
+				return o;
+			};
+		}
+		return function(o) { return o[prop]; };
+	};
+
+	// Geoff.sort() is a function generator which returns a sorting function
+	// based on the received arguments, which you can then pass to Array.sort():
+	//
+	// [{foo: 3}, {foo: 5}, {foo: -4}].sort(geoff.sort("-foo"));
+	//
+	// returns: [{foo: 5}, {foo: 3}, {foo: -4}]
+	geoff.sort = function(args) {
+		function cmp(a, b) {
+			return (a > b) ? 1 : (a < b) ? -1 : 0;
+		}
+
+		function by(prop) {
+			// TODO: support arrays for grouped sub-sorts?
+			if (typeof prop == "function") {
+				return prop;
+			}
+			var dir = prop.charAt(0);
+			var order = (dir == "-") ? -1 : 1;
+			if (dir == "+" || dir == "-") {
+				prop = prop.substr(1);
+			}
+			var read = geoff.read(prop);
+			return function(a, b) {
+				return order * cmp(read(a), read(b));
+			};
+		}
+
+		var sorts = [];
+		for (var i = 0; i < arguments.length; i++) {
+			sorts.push(by(arguments[i]));
+		}
+		return function(a, b) {
+			var i = 0,
+					o = 0,
+					max = sorts.length;
+			do {
+				o = sorts[i].call(undefined, a, b);
+			} while (o == 0 && ++i < max);
+			return o;
+		};
 	};
 
 })(geoff);

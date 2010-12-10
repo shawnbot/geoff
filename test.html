@@ -1,0 +1,27 @@
+<html>
+	<head>
+		<title>GeoFF Tests</title>
+		<script type="text/javascript" src="src/geoff.js"></script>
+	</head>
+	<body>
+		<script type="text/javascript" defer="defer">
+
+			var list = [
+				{foo: 10, bar: 8},
+				{foo: 5, bar: 4},
+				{foo: 1, bar: -3},
+				{foo: 5, bar: -2},
+				{foo: 1, bar: 11},
+				{foo: -4, bar: 0}
+			];
+
+			var sorted;
+			sorted = list.sort(geoff.sort("+foo", "-bar"));
+			console.log(sorted);
+			sorted = list.sort(geoff.sort("-foo", "+bar"));
+			console.log(sorted);
+			console.log([{foo: 3}, {foo: 5}, {foo: -4}].sort(geoff.sort("-foo")));
+
+		</script>
+	</body>
+</html>
