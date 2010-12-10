@@ -1,6 +1,13 @@
 if (!geoff) var geoff = {};
 (function(geoff) {
 
+	/**
+	 * NOTE: MOST OF THIS IS COMPLETELY UNTESTED! USE AT YOUR OWN RISK!
+	 *
+	 * Thanks,
+	 * - Shawn
+	 */
+
  	/**
 	 * Convert a GeoJSON geometry coordinate [x,y] array to a WGS94 object with
 	 * "lat" and "lon" attributes.

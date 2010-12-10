@@ -3,6 +3,7 @@ Geoff: GeoJSON Feature Functions for JavaScript
 Geoff is a collection of functions for working with GeoJSON features. Among its
 many talents:
 
-- sorting and aggregating feature properties
+- creating and manipulating GeoJSON features
+- sorting and aggregating GeoJSON feature properties
 - manipulating dynamic (but non-destructive) feature collections
 - augmenting Polymaps with awesome, new capabilities
