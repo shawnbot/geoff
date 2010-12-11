@@ -2,46 +2,84 @@
 	<head>
 		<title>GeoFF Tests</title>
 		<script type="text/javascript" src="src/geoff.js"></script>
+		<script type="text/javascript" src="lib/polymaps.min.js"></script>
+		<style type="text/css">
+			.map {
+				width: 400px;
+				height: 400px;
+				float: left;
+				background: #eee;
+				margin: 0 20px 20px 0;
+			}
+
+			h2, h3 {
+				clear: both;
+			}
+
+		</style>
 	</head>
 	<body>
-		<script type="text/javascript" defer="defer">
+		<h1>Geoff tests</h1>
+		<h2>Making points &amp; enclosing them in extents</h2>
+		<div class="map" id="points">
+		</div>
+		<script type="text/javascript">
+			var po = org.polymaps;
+			function map(id) {
+				return po.map()
+					.container(document.getElementById(id).appendChild(po.svg("svg")))
+					.center({lat: 37.765, lon: -122.419})
+					.zoom(11)
+					.add(po.interact())
+					.add(po.image()
+							.url(po.url("http://{S}tile.cloudmade.com/1a1b06b230af4efdbb989ea99e9841af/26490/256/{Z}/{X}/{Y}.png")
+								.hosts(["a.", "b.", "c.", ""])));
+			}
 
-			var list = [
-				{foo: 10, bar: 8},
-				{foo: 5, bar: 4},
-				{foo: 1, bar: -3},
-				{foo: 5, bar: -2},
-				{foo: 1, bar: 11},
-				{foo: -4, bar: 0}
-			];
-
-			var foo = geoff.read("foo"),
-					bar = geoff.read("bar");
-
-			var sorted;
-			sorted = list.sort(geoff.sort("+foo", "-bar"));
-			console.log("sorted +foo,-bar: " + list.map(foo) + " ; " + list.map(bar));
-			sorted = list.sort(geoff.sort("-foo", "+bar"));
-			console.log("sorted -foo,+bar: " + list.map(bar) + " ; " + list.map(foo));
-			console.log("[3,5,-4] inline sort -foo: " + [{foo: 3}, {foo: 5}, {foo: -4}].sort(geoff.sort("-foo")).map(foo));
-
-			var a = {foo: {}, a: [1, 2, 3]},
-					b = {foo: {bar: true}};
-			geoff.merge(a, b);
-			console.log("merged: " + ((b.a instanceof Array) && b.foo.bar));
-
-			var p1 = geoff.feature.Point([-122.4, 35.3], {name: "San Francisco"}),
+			var p1 = geoff.feature.Point([-122.531, 37.817], {name: "San Francisco"}),
 					p2 = geoff.feature.clone(p1, null, true);
-			p2.geometry.coordinates = [-120.3, 31.8];
-			console.log("(p1 == p2) = " + geoff.coord.cmp(p1.geometry.coordinates, p2.geometry.coordinates));
+			p2.geometry.coordinates = [-122.345, 37.703];
 
 			var ext = geoff.extent();
 			ext.encloseFeature(p1);
-			console.log("enclose(" + p1.geometry.coordinates + ") -> " + ext.toArray());
-			console.log("area: " + ext.area() + "; empty: " + ext.empty());
 			ext.encloseFeature(p2);
-			console.log("enclose(" + p2.geometry.coordinates + ") -> " + ext.toArray());
-			console.log("area: " + ext.area() + "; empty: " + ext.empty());
+
+			var points = map("points");
+			points.add(po.geoJson()
+				.on("load", po.stylist()
+					.attr("fill", "#09f")
+					.attr("fill-opacity", .1)
+					.attr("stroke", "#000")
+					.attr("stroke-length", 1))
+				.features([ext.toFeature(), p1, p2]));
+			points.extent(ext.toArray());
+			points.zoom(Math.floor(points.zoom()));
+
+		</script>
+		<h2>Reading an extent from one map and drawing it as a feature on another</h2>
+		<div class="map float" id="extent1">
+		</div>
+		<div class="map float" id="extent2">
+		</div>
+		<script type="text/javascript">
+			var left = map("extent1"),
+					right = map("extent2");
+
+			var extent = geoff.extent(),
+					layer = po.geoJson()
+						.on("load", po.stylist()
+							.attr("fill", "#90f")
+							.attr("fill-opacity", .1)
+							.attr("stroke", "#000")
+							.attr("stroke-length", 1));
+			right.add(layer)
+			left.on("move", function(e) {
+				extent.reset().encloseLocations(left.extent());
+				layer.features([extent.toFeature()]);
+			});
+
+			left.zoomBy(1);
+			right.zoomBy(-2);
 
 		</script>
 	</body>

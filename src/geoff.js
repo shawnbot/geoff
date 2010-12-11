@@ -82,6 +82,10 @@ if (!geoff) var geoff = {};
 			return feature("MultiPoint", points, properties);
 		};
 
+		feature.GeometryCollection = function(geometries, properties) {
+			return feature("GeometryCollection", geometries, properties);
+		};
+
 		feature.clone = function(feature, properties, deep) {
 			var copy = geoff.clone(feature, deep ? 10 : 0);
 			if (properties) geoff.merge(properties, feature.properties);
@@ -231,7 +235,8 @@ if (!geoff) var geoff = {};
 		};
 
 		extent.toArray = function() {
-			return [[extent.min.lon, extent.min.lat], [extent.max.lon, extent.max.lat]];
+			return [{lon: extent.min.lon, lat: extent.min.lat},
+						  {lon: extent.max.lon, lat: extent.max.lat}];
 		};
 
 		// Generate a Polygon feature from this extent
@@ -256,6 +261,7 @@ if (!geoff) var geoff = {};
 				[extent.min.lon, extent.max.lat],
 				[extent.max.lon, extent.max.lat],
 				[extent.max.lon, extent.min.lat],
+				[extent.min.lon, extent.min.lat],
 				[extent.min.lon, extent.min.lat]
 			];
 		};
@@ -292,6 +298,11 @@ if (!geoff) var geoff = {};
 		// Enclose a WGS84 lat/lon location
 		extent.encloseLocation = function(latlon) {
 			extent.encloseCoordinate([latlon.lon, latlon.lat]);
+			return extent;
+		};
+
+		extent.encloseLocations = function(latlons) {
+			latlons.forEach(extent.encloseLocation);
 			return extent;
 		};
 
@@ -575,7 +586,27 @@ if (!geoff) var geoff = {};
 
 		maps.outline = function(layer) {
 			var outline = function(e) {
-				e.features.forEach(function(f) { updateFeature(f.data); });
+				if (tiled) {
+					// if we're tiled, adjust the buffer extent to that of the tile
+					// FIXME: this won't work as-is.
+					buffer.margin(null).extent()
+						.northwest(e.map.coordinateLocation(e.tile.coord))
+						.southeast(e.map.coordinateLocation(e.tile.coord.offset(1, 1)));
+				} else {
+					// otherwise, use the world as the extent
+					buffer.margin(null).extent().world();
+				}
+
+				if (single || e.features.length == 1) {
+					// if we have a single feature, adjust just that one
+					buffer.apply(e.features[0]);
+				} else {
+					// But if we have multiple geometries, create a GeometryCollection,
+					// buffer that, and set the layer's features to that single feature.
+					var geometries = e.features.map(function(f) { return f.data.geometry; });
+					var feature = geoff.feature.GeometryCollection(geometries);
+					buffer.apply(feature);
+				}
 			};
 
 			var buffer = geoff.buffer(),
@@ -608,12 +639,6 @@ if (!geoff) var geoff = {};
 					return tiled;
 				}
 			};
-
-			function updateFeature(feature) {
-				if (single) {
-					buffer.apply(feature);
-				}
-			}
 
 			return outline;
 		};
