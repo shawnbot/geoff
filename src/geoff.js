@@ -234,6 +234,8 @@ if (!geoff) var geoff = {};
 			return null;
 		};
 
+		// Returns a 2-element array of lat/lon objects for use with
+		// po.map().extent().
 		extent.toArray = function() {
 			return [{lon: extent.min.lon, lat: extent.min.lat},
 						  {lon: extent.max.lon, lat: extent.max.lat}];
@@ -250,13 +252,22 @@ if (!geoff) var geoff = {};
 			return Math.abs((extent.max.lon - extent.min.lon) * (extent.max.lat - extent.min.lat));
 		};
 
+		// Returns true if the extent is empty
 		extent.empty = function() {
 			return extent.area() == 0;
+		};
+
+		// Returns true if the extent is empty
+		extent.infinite = function() {
+			return !isFinite(extent.area());
 		};
 
 		// Generate a GeoJSON coordinate ring corresponding to the four corners of
 		// the extent rectangle
 		extent.ring = function() {
+			if (extent.infinite()) {
+				throw new TypeError("Can't create a ring from an infinite extent!");
+			}
 			return [
 				[extent.min.lon, extent.max.lat],
 				[extent.max.lon, extent.max.lat],
