@@ -15,12 +15,33 @@
 				{foo: -4, bar: 0}
 			];
 
+			var foo = geoff.read("foo"),
+					bar = geoff.read("bar");
+
 			var sorted;
 			sorted = list.sort(geoff.sort("+foo", "-bar"));
-			console.log(sorted);
+			console.log("sorted +foo,-bar: " + list.map(foo) + " ; " + list.map(bar));
 			sorted = list.sort(geoff.sort("-foo", "+bar"));
-			console.log(sorted);
-			console.log([{foo: 3}, {foo: 5}, {foo: -4}].sort(geoff.sort("-foo")));
+			console.log("sorted -foo,+bar: " + list.map(bar) + " ; " + list.map(foo));
+			console.log("[3,5,-4] inline sort -foo: " + [{foo: 3}, {foo: 5}, {foo: -4}].sort(geoff.sort("-foo")).map(foo));
+
+			var a = {foo: {}, a: [1, 2, 3]},
+					b = {foo: {bar: true}};
+			geoff.merge(a, b);
+			console.log("merged: " + ((b.a instanceof Array) && b.foo.bar));
+
+			var p1 = geoff.feature.Point([-122.4, 35.3], {name: "San Francisco"}),
+					p2 = geoff.feature.clone(p1, null, true);
+			p2.geometry.coordinates = [-120.3, 31.8];
+			console.log("(p1 == p2) = " + geoff.coord.cmp(p1.geometry.coordinates, p2.geometry.coordinates));
+
+			var ext = geoff.extent();
+			ext.encloseFeature(p1);
+			console.log("enclose(" + p1.geometry.coordinates + ") -> " + ext.toArray());
+			console.log("area: " + ext.area() + "; empty: " + ext.empty());
+			ext.encloseFeature(p2);
+			console.log("enclose(" + p2.geometry.coordinates + ") -> " + ext.toArray());
+			console.log("area: " + ext.area() + "; empty: " + ext.empty());
 
 		</script>
 	</body>

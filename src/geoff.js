@@ -58,8 +58,8 @@ if (!geoff) var geoff = {};
 			};
 		};
 
-		feature.Point = function(point, properties) {
-			return feature("Point", geoff.lltoc(point), properties);
+		feature.Point = function(coord, properties) {
+			return feature("Point", coord, properties);
 		};
 
 		feature.Polygon = function(rings, properties) {
@@ -82,35 +82,43 @@ if (!geoff) var geoff = {};
 			return feature("MultiPoint", points, properties);
 		};
 
-		function clone(obj, deep) {
-			if (obj instanceof Array) {
-				return deep
-					? obj.map(function(o) { return clone(o, true); })
-					: obj.slice();
-			} else {
-				var out = {};
-				for (var p in obj) {
-					out[p] = deep ? clone(obj[p], true) : obj[p];
-				}
-			}
-		}
-
-		function merge(a, b) {
-			for (var p in a) {
-				b[p] = (typeof a[p] == "object")
-					? merge(a[p], b[p])
-					: a[p];
-			}
-		}
-
-		feature.clone = function(feature, properties) {
-			var copy = clone(feature);
-			if (properties) merge(properties, feature.properties);
+		feature.clone = function(feature, properties, deep) {
+			var copy = geoff.clone(feature, deep ? 5 : 0);
+			if (properties) geoff.merge(properties, feature.properties);
 			return copy;
 		};
 
 		return feature;
 	})();
+
+	geoff.clone = function(obj, depth) {
+		if (typeof depth == "undefined") depth = 0;
+		if (obj instanceof Array) {
+			return (depth > 0)
+				? obj.map(function(o) { return geoff.clone(o, depth - 1); })
+				: obj.slice();
+		} else {
+			var out = {};
+			for (var p in obj) {
+				if (p == "__proto__") continue;
+				out[p] = (typeof obj[p] == "object" && depth > 0)
+					? geoff.clone(obj[p], depth - 1)
+					: obj[p];
+			}
+			return out;
+		}
+	};
+
+	geoff.merge = function(a, b) {
+		for (var p in a) {
+			if (p == "__proto__") continue;
+			if (typeof a[p] == "object" && typeof b[p] == "object") {
+				geoff.merge(a[p], b[p]);
+			} else {
+				b[p] = a[p];
+			}
+		}
+	};
 
 	/**
 	 * An extent is a lat/lon bounding box. Extents an be used to calculate
@@ -175,21 +183,6 @@ if (!geoff) var geoff = {};
 			return extent;
 		};
 
-		// Enclose a GeoJSON [x,y] coordinate
-		extent.encloseCoordinate = function(coord) {
-			extent.min.lon = Math.min(extent.min.lon, coord[0]);
-			extent.max.lon = Math.max(extent.max.lon, coord[0]);
-			extent.min.lat = Math.min(extent.min.lat, coord[1]);
-			extent.max.lat = Math.max(extent.max.lat, coord[1]);
-			return extent;
-		};
-
-		// Enclose a WGS84 lat/lon location
-		extent.encloseLocation = function(latlon) {
-			extent.encloseCoordinate([latlon.lon, latlon.lat]);
-			return extent;
-		};
-
 		// Returns true if the extent contains the given lat/lon location
 		extent.containsLocation = function(latlon) {
 			return !(
@@ -237,6 +230,10 @@ if (!geoff) var geoff = {};
 			return null;
 		};
 
+		extent.toArray = function() {
+			return [[extent.min.lon, extent.min.lat], [extent.max.lon, extent.max.lat]];
+		};
+
 		// Generate a Polygon feature from this extent
 		extent.toFeature = function(properties) {
 			var ring = extent.ring();
@@ -246,6 +243,10 @@ if (!geoff) var geoff = {};
 		// Get the "area" of the rectangle.
 		extent.area = function() {
 			return Math.abs((extent.max.lon - extent.min.lon) * (extent.max.lat - extent.min.lat));
+		};
+
+		extent.empty = function() {
+			return extent.area() == 0;
 		};
 
 		// Generate a GeoJSON coordinate ring corresponding to the four corners of
@@ -276,6 +277,21 @@ if (!geoff) var geoff = {};
 				extent.min.lat -= y;
 				extent.max.lat += y;
 			}
+			return extent;
+		};
+
+		// Enclose a GeoJSON [x,y] coordinate
+		extent.encloseCoordinate = function(coord) {
+			extent.min.lon = Math.min(extent.min.lon, coord[0]);
+			extent.max.lon = Math.max(extent.max.lon, coord[0]);
+			extent.min.lat = Math.min(extent.min.lat, coord[1]);
+			extent.max.lat = Math.max(extent.max.lat, coord[1]);
+			return extent;
+		};
+
+		// Enclose a WGS84 lat/lon location
+		extent.encloseLocation = function(latlon) {
+			extent.encloseCoordinate([latlon.lon, latlon.lat]);
 			return extent;
 		};
 
@@ -333,6 +349,23 @@ if (!geoff) var geoff = {};
 
 		return extent;
 	};
+
+	geoff.coord = (function() {
+		var coord = function(point) {
+			if (latlon instanceof Array) {
+				return latlon.slice();
+			} else {
+				return geoff.lltoc(latlon);
+			}
+		};
+
+		coord.cmp = function(a, b, precision) {
+			// TODO: precision?
+			return a[0] == b[0] && a[1] == b[1];
+		};
+
+		return coord;
+	})();
 
 	/**
 	 * Modify a feature so that includes an external rectangular ring buffer of
