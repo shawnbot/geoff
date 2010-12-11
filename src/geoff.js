@@ -83,7 +83,7 @@ if (!geoff) var geoff = {};
 		};
 
 		feature.clone = function(feature, properties, deep) {
-			var copy = geoff.clone(feature, deep ? 5 : 0);
+			var copy = geoff.clone(feature, deep ? 10 : 0);
 			if (properties) geoff.merge(properties, feature.properties);
 			return copy;
 		};
@@ -368,63 +368,118 @@ if (!geoff) var geoff = {};
 	})();
 
 	/**
-	 * Modify a feature so that includes an external rectangular ring buffer of
-	 * the given size (in lat/lon degrees) around the original coordinates.
+	 * A buffer modifies GeoJSON geometries to include an outer ring around the
+	 * rectangular extent of the feature. Call buffer.apply(feature, copy)
 	 */
-	geoff.buffer = function(feature, buffer, fidelity) {
-		var extent = geoff.extent(),
-				geom = feature.geometry;
+	geoff.buffer = function() {
+		var buffer = {},
+				extent = geoff.extent(),
+				margin = null,
+				radius = 1,
+				fidelity = 32;
 
-		// enclose the feature's geometry in the extent
-		extent.encloseFeature(feature);
-		// then buffer it by the provided value
-		extent.buffer(buffer);
+		// Set or get the margin. The setter takes either two numerical arguments:
+		// x and y, or a single object with x and y properties. If no arguments are
+		// provided, the margin is returned as an object with x and y properties.
+		buffer.margin = function(x, y) {
+			if (arguments.length) {
+				if (arguments.length == 1) {
+					margin = x;
+				} else {
+					margin = {x: x, y: y};
+				}
+				return buffer;
+			} else {
+				return margin;
+			}
+		};
 
-		// then, maniplate the geometry...
-		switch (geom.type) {
-			case "Point":
-				// Turn it into a polygon with two rings:
-				// 1) the extent rectangle, and
-				// 2) an inner circle around the point coordinate
-				var center = geom.coordinates;
-				geom.type = "Polygon";
-				geom.coordinates = [
-					extent.ring(),
-					geoff.circle(center, buffer / 2, fidelity)
-				];
-				break;
+		// Set the radius for cirles drawn around Point geometries.
+		buffer.radius = function(r) {
+			if (arguments.length) {
+				radius = r;
+				return buffer;
+			} else {
+				return radius;
+			}
+		};
 
-			case "Line":
-			case "LineString":
-				throw new TypeError("Can't do Line or LineString yet!");
+		// Set the fidelity for cirles drawn around Point geometries.
+		buffer.fidelity = function(r) {
+			if (arguments.length) {
+				fidelity = r;
+				return buffer;
+			} else {
+				return fidelity;
+			}
+		};
 
-			case "MultiPoint":
-				// turn it into a polygon with 2 or more rings:
-				// 1) the extent rectangle, and
-				// 2+) circles around each of point coordinates
-				var coords = geom.coordinates.slice();
-				geom.type = "Polygon";
-				geom.coordinates = [extent.ring()];
-				coords.forEach(function(coord) {
-					geom.coordinates.push(geoff.circle(coord, buffer / 2, fidelity));
-				});
-				break;
+		function apply(feature) {
+			var geom = feature.geometry;
+			// maniplate the geometry...
+			switch (geom.type) {
+				case "Point":
+					// Turn it into a polygon with two rings:
+					// 1) the extent rectangle, and
+					// 2) an inner circle around the point coordinate
+					var center = geom.coordinates;
+					geom.type = "Polygon";
+					geom.coordinates = [
+						extent.ring(),
+						geoff.circle(center, buffer / 2, fidelity)
+					];
+					break;
 
-			case "Polygon":
-				// buffer the extent and prepend the geometry rings with the
-				// extent rectangle
-				extent.buffer(buffer);
-				geom.coordinates.unshift(extent.ring());
-				break;
+				case "Line":
+				case "LineString":
+					throw new TypeError("Can't do Line or LineString yet!");
 
-			case "MultiPolygon":
-				// buffer the extent and prepend a polygon with a the extent
-				// rectangle as its only ring
-				extent.buffer(buffer);
-				geom.coordinates.unshift([extent.ring()]);
-				break;
+				case "MultiPoint":
+					// turn it into a polygon with 2 or more rings:
+					// 1) the extent rectangle, and
+					// 2+) circles around each of point coordinates
+					var coords = geom.coordinates.slice();
+					geom.type = "Polygon";
+					geom.coordinates = [extent.ring()];
+					coords.forEach(function(coord) {
+						geom.coordinates.push(geoff.circle(coord, buffer / 2, fidelity));
+					});
+					break;
+
+				case "Polygon":
+					// buffer the extent and prepend the geometry rings with the
+					// extent rectangle
+					extent.buffer(buffer);
+					geom.coordinates.unshift(extent.ring());
+					break;
+
+				case "MultiPolygon":
+					// buffer the extent and prepend a polygon with a the extent
+					// rectangle as its only ring
+					extent.buffer(buffer);
+					geom.coordinates.unshift([extent.ring()]);
+					break;
+			}
+			return feature;
 		}
-		return feature;
+
+		// Apply the buffer to a feature. If copy is true, a deep copy of the
+		// feature is created, modified, and returned. Otherwise the feature is
+		// modified in place and returned.
+		buffer.apply = function(feature, copy) {
+			if (margin) {
+				extent.reset()
+					.encloseFeature(feature)
+					.buffer(margin.x, margin.y);
+			} else {
+				extent.world();
+			}
+			return copy
+				? apply(geoff.feature.clone(feature))
+				: apply(feature);
+		};
+		
+		return buffer;
 	};
 
 	var TWO_PI = Math.PI * 2;
@@ -512,5 +567,59 @@ if (!geoff) var geoff = {};
 			return o;
 		};
 	};
+
+	// The polympas "module" contains utility functions for working with Polymaps:
+	// http://polymaps.org
+	geoff.polympas = (function() {
+		var maps = {}
+
+		maps.outline = function(layer) {
+			var outline = function(e) {
+				e.features.forEach(function(f) { updateFeature(f.data); });
+			};
+
+			var buffer = geoff.buffer(),
+					single = true,
+					tiled = false;
+
+			layer.buffer = function(b) {
+				if (arguments.length) {
+					buffer = b;
+					return outline;
+				} else {
+					return buffer;
+				}
+			};
+
+			layer.single = function(b) {
+				if (arguments.length) {
+					single = b;
+					return outline;
+				} else {
+					return single;
+				}
+			};
+
+			layer.tile = function(b) {
+				if (arguments.length) {
+					tiled = b;
+					return outline;
+				} else {
+					return tiled;
+				}
+			};
+
+			function updateFeature(feature) {
+				if (single) {
+					buffer.apply(feature);
+				}
+			}
+
+			return outline;
+		};
+
+		return maps;
+	})();
+
 
 })(geoff);
