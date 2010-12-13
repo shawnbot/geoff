@@ -372,7 +372,9 @@ if (!geoff) var geoff = {};
 		return extent;
 	};
 
+	// GeoJSON Coordinate functions
 	geoff.coord = (function() {
+		// Get a coord from either an Array or a lat/lon object
 		var coord = function(point) {
 			if (latlon instanceof Array) {
 				return latlon.slice();
@@ -381,8 +383,10 @@ if (!geoff) var geoff = {};
 			}
 		};
 
-		coord.cmp = function(a, b, precision) {
-			// TODO: precision?
+		// TODO: implement wrap()
+
+		// compare two coordinates
+		coord.cmp = function(a, b) {
 			return a[0] == b[0] && a[1] == b[1];
 		};
 
@@ -406,7 +410,11 @@ if (!geoff) var geoff = {};
 		buffer.margin = function(x, y) {
 			if (arguments.length) {
 				if (arguments.length == 1) {
-					margin = x;
+					if ("x" in margin && "y" in margin) {
+						margin = x;
+					} else {
+						margin = {x: x, y: x};
+					}
 				} else {
 					margin = {x: x, y: y};
 				}
@@ -494,7 +502,8 @@ if (!geoff) var geoff = {};
 					.encloseFeature(feature)
 					.buffer(margin.x, margin.y);
 			} else {
-				extent.world();
+				extent.world()
+					.encloseFeature(feature);
 			}
 			return copy
 				? apply(geoff.feature.clone(feature))
@@ -595,14 +604,12 @@ if (!geoff) var geoff = {};
 	geoff.polympas = (function() {
 		var maps = {}
 
-		maps.outline = function(layer) {
+		maps.outline = function() {
 			var outline = function(e) {
 				if (tiled) {
-					// if we're tiled, adjust the buffer extent to that of the tile
-					// FIXME: this won't work as-is.
-					buffer.margin(null).extent()
-						.northwest(e.map.coordinateLocation(e.tile.coord))
-						.southeast(e.map.coordinateLocation(e.tile.coord.offset(1, 1)));
+					// TODO: figure out how to get a tile extent. This probably involves
+					// having a reference to the map.
+					throw new TypeError("We don't do tiling yet!");
 				} else {
 					// otherwise, use the world as the extent
 					buffer.margin(null).extent().world();
@@ -624,7 +631,7 @@ if (!geoff) var geoff = {};
 					single = true,
 					tiled = false;
 
-			layer.buffer = function(b) {
+			outline.buffer = function(b) {
 				if (arguments.length) {
 					buffer = b;
 					return outline;
@@ -633,7 +640,7 @@ if (!geoff) var geoff = {};
 				}
 			};
 
-			layer.single = function(b) {
+			outline.single = function(b) {
 				if (arguments.length) {
 					single = b;
 					return outline;
@@ -642,7 +649,7 @@ if (!geoff) var geoff = {};
 				}
 			};
 
-			layer.tile = function(b) {
+			outline.tile = function(b) {
 				if (arguments.length) {
 					tiled = b;
 					return outline;

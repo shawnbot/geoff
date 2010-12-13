@@ -1,0 +1,72 @@
+<html>
+	<head>
+		<title>Geoff: GeoJSON Feature Functions for JavaScript</title>
+		<style type="text/css">
+			.map {
+				width: 400px;
+				height: 400px;
+				float: left;
+				background: #eee;
+				margin: 0 20px 20px 0;
+			}
+
+			h2, h3 {
+				clear: both;
+			}
+		</style>
+		<script type="text/javascript" src="src/geoff.js"></script>
+		<script type="text/javascript" src="lib/polymaps.min.js"></script>
+		<script type="text/javascript">
+			var po = org.polymaps;
+			function map(id) {
+				return po.map()
+					.container(document.getElementById(id).appendChild(po.svg("svg")))
+					.center({lat: 37.765, lon: -122.419})
+					.zoom(11)
+					.add(po.interact())
+					.add(po.image()
+							.url(po.url("http://{S}tile.cloudmade.com/1a1b06b230af4efdbb989ea99e9841af/26490/256/{Z}/{X}/{Y}.png")
+								.hosts(["a.", "b.", "c.", ""])));
+			}
+		</script>
+	</head>
+	<body>
+		<h1>Geoff</h1>
+		<div id="intro">
+			<p>Geoff is a collection of JavaScript functions for working with <a
+				href="http://geojson.org/">GeoJSON</a> objects. More generally, it's a
+			library that eases the creation and manipulation of geographic
+			geometries, and makes doing some things in <a
+				href="http://polymaps.org/">Polymaps</a> shockingly easy.</p>
+		</div>
+
+		<h2>Examples</h2>
+		<div class="example">
+			<h3>Show the extent of one Polymap on another</h3>
+			<p>In this example we use <code>geoff.extent()</code> to draw the visible
+			bounds of the map on the left onto the map on the right.</p>
+			<div class="map" id="extent1"></div>
+			<div class="map" id="extent2"></div>
+			<script type="text/javascript">
+				var left = map("extent1"),
+						right = map("extent2");
+
+				var extent = geoff.extent(),
+						layer = po.geoJson()
+							.on("load", po.stylist()
+								.attr("fill", "#f00")
+								.attr("fill-opacity", .5));
+				right.add(layer);
+				left.on("move", function(e) {
+					extent.reset();
+					extent.encloseLocations(left.extent());
+					layer.features([extent.toFeature()]);
+				});
+
+				left.zoomBy(1);
+				right.zoomBy(-2);
+
+			</script>
+		</div>
+	</body>
+</html>

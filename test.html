@@ -72,7 +72,7 @@
 							.attr("fill-opacity", .1)
 							.attr("stroke", "#000")
 							.attr("stroke-length", 1));
-			right.add(layer)
+			right.add(layer);
 			left.on("move", function(e) {
 				extent.reset().encloseLocations(left.extent());
 				layer.features([extent.toFeature()]);
