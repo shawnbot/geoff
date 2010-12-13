@@ -3,6 +3,9 @@
 		<title>Geoff: GeoJSON Feature Functions for JavaScript</title>
 		<style type="text/css" media="screen">
 			@import url(style/screen.css);
+
+			#extent1 { width: 600px; }
+			#extent2 { width: 200px; height: 200px; }
 		</style>
 		<script type="text/javascript" src="src/geoff.js"></script>
 		<script type="text/javascript" src="lib/polymaps.min.js"></script>
@@ -31,32 +34,59 @@
 		</div>
 
 		<h2>Examples</h2>
+
 		<div class="example">
-			<h3>Show the extent of one Polymap on another</h3>
-			<p>In this example we use <code>geoff.extent()</code> to draw the visible
-			bounds of the map on the left onto the map on the right.</p>
-			<div class="map" id="extent1"></div>
-			<div class="map" id="extent2"></div>
-			<script type="text/javascript">
-				var left = map("extent1"),
-						right = map("extent2");
+			<div id="extent-sharing">
+				<h3>Show the extent of one Polymap on another</h3>
+				<p>In this example we use <code>geoff.extent()</code> to draw the visible
+				bounds of the map on the left onto the map on the right.</p>
+				<div class="map" id="extent1"></div>
+				<div class="map" id="extent2"></div>
+				<div class="clear"></div>
+				<script type="text/javascript" class="code">
+					var left = map("extent1"),
+							right = map("extent2").zoomBy(-3);
 
-				var extent = geoff.extent(),
-						layer = po.geoJson()
-							.on("load", po.stylist()
-								.attr("fill", "#f00")
-								.attr("fill-opacity", .5));
-				right.add(layer);
-				left.on("move", function(e) {
-					extent.reset();
-					extent.encloseLocations(left.extent());
-					layer.features([extent.toFeature()]);
-				});
+					var extent = geoff.extent(),
+							layer = po.geoJson()
+								.on("load", po.stylist()
+									.attr("fill", "#f00")
+									.attr("fill-opacity", .5));
 
-				left.zoomBy(1);
-				right.zoomBy(-2);
+					function updateExtent() {
+						extent.reset();
+						extent.encloseLocations(left.extent());
+						layer.features([extent.toFeature()]);
+					}
 
-			</script>
+					right.add(layer);
+					left.on("move", updateExtent);
+					updateExtent();
+
+				</script>
+			</div>
 		</div>
+
+		<script type="text/javascript">
+			function format(code) {
+				var lines = code.split(/[\n\r]/).slice(1, -1);
+				var leading = lines[0].match(/^(\s+)/)[0],
+						replace = new RegExp("^" + leading);
+				return lines.map(function(line) {
+						return line.replace(replace, "").replace(/\t/g, "  ");
+				}).join("\n");
+			}
+
+			var scripts = document.getElementsByTagName("script");
+			for (var i = 0; i < scripts.length; i++) {
+				var script = scripts[i];
+				if (script.getAttribute("class") == "code") {
+					var block = document.createElement("pre");
+					block.setAttribute("class", "code");
+					block.appendChild(document.createTextNode(format(script.firstChild.nodeValue)));
+					script.parentNode.appendChild(block);
+				}
+			}
+		</script>
 	</body>
 </html>
