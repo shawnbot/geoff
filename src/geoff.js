@@ -137,9 +137,44 @@ if (!geoff) var geoff = {};
 
 		// cover the globe
 		extent.world = function() {
-			extent.min = {lon: -180, lat: -90};
-			extent.max = {lon: +180, lat: +90};
+			extent.min = {lon: -180, lat: -89.999};
+			extent.max = {lon: +180, lat: +89.999};
 			return extent;
+		};
+
+		extent.size = function(latlon) {
+			if (arguments.length) {
+				var center = extent.center();
+				extent.min.lon = center.lon - latlon.lon / 2;
+				extent.max.lon = center.lon + latlon.lon / 2;
+				extent.min.lat = center.lat - latlon.lat / 2;
+				extent.max.lat = center.lat + latlon.lat / 2;
+				return extent;
+			} else {
+				return {
+					lon: extent.max.lon - extent.min.lon,
+					lat: extent.max.lat - extent.min.lat
+				};
+			}
+		};
+
+		extent.offset = function(latlon) {
+			extent.min.lon += latlon.lon;
+			extent.max.lon += latlon.lon;
+			extent.min.lat += latlon.lat;
+			extent.max.lat += latlon.lat;
+			return extent;
+		};
+
+		extent.center = function(latlon) {
+			if (arguments.length) {
+				// TODO
+			} else {
+				return {
+					lon: extent.min.lon + size.lon / 2,
+					lat: extent.min.lat + size.lat / 2
+				};
+			}
 		};
 
 		// Northwest, Southeast, Northeast and Southwest corner getter/setters
@@ -279,7 +314,7 @@ if (!geoff) var geoff = {};
 
 		// Buffer the extent by x and y values. If no y is provided we assume the x
 		// value for both dimensions.
-		extent.buffer = function(x, y) {
+		extent.inflate = function(x, y) {
 			if (arguments.length == 0) {
 				throw new TypeError("Expecting 1 or two arguments for extent.buffer() (got zero)");
 			}
@@ -399,24 +434,34 @@ if (!geoff) var geoff = {};
 	 */
 	geoff.buffer = function() {
 		var buffer = {},
-				extent = geoff.extent(),
+				extent = null,
 				margin = null,
 				radius = 1,
 				fidelity = 32;
 
+		buffer.extent = function(e) {
+			if (arguments.length) {
+				extent = e;
+				return buffer;
+			} else {
+				return extent;
+			}
+		};
+
 		// Set or get the margin. The setter takes either two numerical arguments:
-		// x and y, or a single object with x and y properties. If no arguments are
-		// provided, the margin is returned as an object with x and y properties.
-		buffer.margin = function(x, y) {
+		// lon (x) and lat (y), or a single location object with "lon" and
+		// "lat" properties. If no arguments are provided, the margin is
+		// returned as an object with lon and lat properties.
+		buffer.margin = function(lon, lat) {
 			if (arguments.length) {
 				if (arguments.length == 1) {
-					if ("x" in margin && "y" in margin) {
-						margin = x;
+					if (typeof lon == "object") {
+						margin = lon;
 					} else {
-						margin = {x: x, y: x};
+						margin = {lon: lon, lat: lon};
 					}
 				} else {
-					margin = {x: x, y: y};
+					margin = {lon: lon, lat: lat};
 				}
 				return buffer;
 			} else {
@@ -444,7 +489,7 @@ if (!geoff) var geoff = {};
 			}
 		};
 
-		function apply(feature) {
+		function apply(feature, ext) {
 			var geom = feature.geometry;
 			// maniplate the geometry...
 			switch (geom.type) {
@@ -455,7 +500,7 @@ if (!geoff) var geoff = {};
 					var center = geom.coordinates;
 					geom.type = "Polygon";
 					geom.coordinates = [
-						extent.ring(),
+						ext.ring(),
 						geoff.circle(center, buffer / 2, fidelity)
 					];
 					break;
@@ -470,7 +515,7 @@ if (!geoff) var geoff = {};
 					// 2+) circles around each of point coordinates
 					var coords = geom.coordinates.slice();
 					geom.type = "Polygon";
-					geom.coordinates = [extent.ring()];
+					geom.coordinates = [ext.ring()];
 					coords.forEach(function(coord) {
 						geom.coordinates.push(geoff.circle(coord, buffer / 2, fidelity));
 					});
@@ -479,35 +524,38 @@ if (!geoff) var geoff = {};
 				case "Polygon":
 					// buffer the extent and prepend the geometry rings with the
 					// extent rectangle
-					extent.buffer(buffer);
-					geom.coordinates.unshift(extent.ring());
+					geom.coordinates.unshift(ext.ring());
 					break;
 
 				case "MultiPolygon":
 					// buffer the extent and prepend a polygon with a the extent
 					// rectangle as its only ring
-					extent.buffer(buffer);
-					geom.coordinates.unshift([extent.ring()]);
+					geom.coordinates.unshift([ext.ring()]);
 					break;
 			}
 			return feature;
+		}
+
+		function makeExtent(feature) {
+			var ext = geoff.extent();
+			if (margin) {
+				ext.encloseFeature(feature)
+				ext.inflate(margin.lon, margin.lat);
+			} else {
+				ext.world();
+				ext.encloseFeature(feature);
+			}
+			return ext;
 		}
 
 		// Apply the buffer to a feature. If copy is true, a deep copy of the
 		// feature is created, modified, and returned. Otherwise the feature is
 		// modified in place and returned.
 		buffer.apply = function(feature, copy) {
-			if (margin) {
-				extent.reset()
-					.encloseFeature(feature)
-					.buffer(margin.x, margin.y);
-			} else {
-				extent.world()
-					.encloseFeature(feature);
-			}
+			var ext = extent || makeExtent(feature);
 			return copy
-				? apply(geoff.feature.clone(feature))
-				: apply(feature);
+				? apply(geoff.feature.clone(feature), ext)
+				: apply(feature, ext);
 		};
 		
 		return buffer;

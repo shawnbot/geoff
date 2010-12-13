@@ -34,10 +34,10 @@
 			}
 		</script>
 
-		<h2>Examples</h2>
+		<div id="examples">
+			<h2>Examples</h2>
 
-		<div class="example">
-			<div id="extent-sharing">
+			<div class="example" id="extent-sharing">
 				<h3>Show the extent of one Polymap on another</h3>
 				<p>In this example we use <code>geoff.extent()</code> to draw the visible
 				bounds of the map on the left onto the map on the right.</p>
@@ -45,26 +45,76 @@
 				<div class="map" id="extent2"></div>
 				<div class="clear"></div>
 				<script type="text/javascript" class="code" defer="defer">
-					var left = map("extent1"),
-							right = map("extent2").zoomBy(-3);
+					(function() {
+						var left = map("extent1"),
+								right = map("extent2").zoomBy(-3);
 
-					var extent = geoff.extent(),
-							layer = po.geoJson()
-								.on("load", po.stylist()
-									.attr("fill", "#f00")
-									.attr("fill-opacity", .5));
+						// create an extent and a layer for the rectangular polygon
+						var extent = geoff.extent(),
+								layer = po.geoJson()
+									.on("load", po.stylist()
+										.attr("fill", "#f00")
+										.attr("fill-opacity", .5));
 
-					function updateExtent() {
-						extent.reset();
-						extent.encloseLocations(left.extent());
-						layer.features([extent.toFeature()]);
-					}
+						// in our update function we reset the extent to infinite
+						// bounds (+/-Infinity), enclose the locations returned //
+						// by po.map.extent(), then turn the extent into a GeoJSON
+						// Polygon feature and put it into the layer.
+						function updateExtent() {
+							extent.reset();
+							extent.encloseLocations(left.extent());
+							layer.features([extent.toFeature()]);
+						}
 
-					right.add(layer);
-					left.on("move", updateExtent);
-					updateExtent();
+						right.add(layer);
+						// update whenever the left map moves
+						left.on("move", updateExtent);
+						// ...and do it once manually
+						updateExtent();
+					})();
 				</script>
 			</div>
+
+			<div class="example" id="outline">
+				<h3>Outlines</h3>
+				<p>In these examples we use <code>geoff.extent()</code> to get
+				the rectangular bounds of a GeoJSON Polygon feature loaded in <a
+					href="data/mission.js">this file</a>, then use
+				<code>geoff.buffer()</code> to add an outer ring to its
+				geometry, which produces a "knock-out" drawing effect in
+				SVG.</p>
+				<div class="map" id="outline1"></div>
+				<div class="clear"></div>
+				<script type="text/javascript" src="data/mission.js"></script>
+				<script type="text/javascript" class="code" defer="defer">
+					(function() {
+						var outline = map("outline1");
+
+						var layer = po.geoJson()
+							.tile(false)
+							.on("load", po.stylist()
+								.attr("stroke", "#f00")
+								.attr("stroke-width", .2)
+								.attr("fill", "#000")
+								.attr("fill-opacity", .6));
+						outline.add(layer);
+
+						// zoom to the feature's extent
+						var extent = geoff.extent().encloseFeature(mission);
+						outline.extent(extent.toArray());
+						outline.zoom(Math.floor(outline.zoom()));
+
+						// apply a rectangular buffer ring to the feature
+						var buffer = geoff.buffer();
+						buffer.apply(mission);
+						// then pass that feature on to the layer
+						layer.features([mission]);
+
+					})();
+				</script>
+			</div>
+
+
 		</div>
 
 		<script type="text/javascript">
