@@ -9,7 +9,18 @@
 		</style>
 		<script type="text/javascript" src="src/geoff.js"></script>
 		<script type="text/javascript" src="lib/polymaps.min.js"></script>
-		<script type="text/javascript">
+	</head>
+	<body>
+		<h1>Geoff</h1>
+		<div id="intro">
+			<p>Geoff is a collection of JavaScript functions for working with <a
+				href="http://geojson.org/">GeoJSON</a> objects. More generally, it's a
+			library that eases the creation and manipulation of geographic
+			geometries, and makes doing some things in <a
+				href="http://polymaps.org/">Polymaps</a> shockingly easy.</p>
+		</div>
+
+		<script type="text/javascript" defer="defer">
 			var po = org.polymaps;
 			function map(id) {
 				return po.map()
@@ -22,16 +33,6 @@
 								.hosts(["a.", "b.", "c.", ""])));
 			}
 		</script>
-	</head>
-	<body>
-		<h1>Geoff</h1>
-		<div id="intro">
-			<p>Geoff is a collection of JavaScript functions for working with <a
-				href="http://geojson.org/">GeoJSON</a> objects. More generally, it's a
-			library that eases the creation and manipulation of geographic
-			geometries, and makes doing some things in <a
-				href="http://polymaps.org/">Polymaps</a> shockingly easy.</p>
-		</div>
 
 		<h2>Examples</h2>
 
@@ -43,7 +44,7 @@
 				<div class="map" id="extent1"></div>
 				<div class="map" id="extent2"></div>
 				<div class="clear"></div>
-				<script type="text/javascript" class="code">
+				<script type="text/javascript" class="code" defer="defer">
 					var left = map("extent1"),
 							right = map("extent2").zoomBy(-3);
 
@@ -62,7 +63,6 @@
 					right.add(layer);
 					left.on("move", updateExtent);
 					updateExtent();
-
 				</script>
 			</div>
 		</div>
@@ -77,15 +77,13 @@
 				}).join("\n");
 			}
 
-			var scripts = document.getElementsByTagName("script");
+			var scripts = document.querySelectorAll("script.code");
 			for (var i = 0; i < scripts.length; i++) {
 				var script = scripts[i];
-				if (script.getAttribute("class") == "code") {
-					var block = document.createElement("pre");
-					block.setAttribute("class", "code");
-					block.appendChild(document.createTextNode(format(script.firstChild.nodeValue)));
-					script.parentNode.appendChild(block);
-				}
+				var block = document.createElement("pre");
+				block.setAttribute("class", "code");
+				block.appendChild(document.createTextNode(format(script.firstChild.nodeValue)));
+				script.parentNode.appendChild(block);
 			}
 		</script>
 	</body>
