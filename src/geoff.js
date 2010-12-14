@@ -1,12 +1,8 @@
 if (!geoff) var geoff = {};
+if (typeof module !== "undefined" && module.exports) {
+	module.exports = geoff;
+}
 (function(geoff) {
-
-	/**
-	 * NOTE: MOST OF THIS IS COMPLETELY UNTESTED! USE AT YOUR OWN RISK!
-	 *
-	 * Thanks,
-	 * - Shawn
-	 */
 
  	/**
 	 * Convert a GeoJSON geometry coordinate [x,y] array to a WGS94 object with
@@ -36,24 +32,25 @@ if (!geoff) var geoff = {};
 	 * GeoJSON feature generators.
 	 */
 	geoff.feature = (function() {
-		// generate an arbitrary GeoJSON feature.
-		var feature = function(type, coordinates, properties) {
-			if (type == "GeometryCollection") {
-				return {
-					type: "Feature",
-					properties: properties || {},
-					geometry: {
-						type: type,
-						geometries: coordinates
-					}
-				};
+		// generate a GeoJSON feature object.
+		var feature = function(type, coords, properties) {
+			switch (type) {
+				case "GeometryCollection":
+					return {
+						type: "Feature",
+						properties: properties || {},
+						geometry: {
+							type: type,
+							geometries: coords || []
+						}
+					};
 			}
 			return {
 				type: "Feature",
 				properties: properties || {},
 				geometry: {
 					type: type,
-					coordinates: coordinates || []
+					coordinates: coords || []
 				}
 			};
 		};
@@ -293,14 +290,14 @@ if (!geoff) var geoff = {};
 		};
 
 		// Returns true if the extent is empty
-		extent.infinite = function() {
-			return !isFinite(extent.area());
+		extent.isFinite = function() {
+			return isFinite(extent.area());
 		};
 
 		// Generate a GeoJSON coordinate ring corresponding to the four corners of
 		// the extent rectangle
 		extent.ring = function() {
-			if (extent.infinite()) {
+			if (!extent.isFinite()) {
 				throw new TypeError("Can't create a ring from an infinite extent!");
 			}
 			return [
@@ -358,9 +355,9 @@ if (!geoff) var geoff = {};
 				// Point geometries contain a single [x,y] coordinate
 				case "Point":
 					// enclose all of the point coordinates
-					var center = geom.coordinates;
-					extent.encloseCoordinate(center);
+					extent.encloseCoordinate(geom.coordinates);
 					break;
+
 				// LineString and MultiPoint geometries contain a list of coordinates:
 				// [[x,y], [x,y]]
 				case "LineString":
@@ -368,6 +365,7 @@ if (!geoff) var geoff = {};
 					// enclose all of the point coordinates
 					geom.coordinates.forEach(extent.encloseCoordinate);
 					break;
+
 				// MultiLineString and Polygon geometries contain a list of rings:
 				// [[[x,y], [x,y]],
         //  [[x,y], [x,y]]]
@@ -378,6 +376,7 @@ if (!geoff) var geoff = {};
 						ring.forEach(extent.encloseCoordinate);
 					});
 					break;
+
 				// MultiPolygon geometries contain a list of polygonal ring lists:
 				// [[[[x,y], [x,y]], [[x,y], [x,y]]],
         //  [[[x,y], [x,y]], [[x,y], [x,y]]]]
@@ -650,22 +649,32 @@ if (!geoff) var geoff = {};
 	// The polympas "module" contains utility functions for working with Polymaps:
 	// http://polymaps.org
 	geoff.polympas = (function() {
-		var maps = {}
+		var polymaps = {};
 
-		maps.outline = function() {
+		polymaps.outline = function() {
 			var outline = function(e) {
 				if (tiled) {
-					// TODO: figure out how to get a tile extent. This probably involves
-					// having a reference to the map.
-					throw new TypeError("We don't do tiling yet!");
+					// Get a tile extent. Note that "this" in a Polymaps event
+					// listener is the po.map() reference.
+					var coord = e.tile.coord;
+					var northWest = this.coordinateLocation(coord);
+							southEast = this.coordinateLocation({
+								row: coord.row + 1,
+								column: coord.column + 1,
+								zoom: coord.zoom});
+					var ext = geoff.extent()
+						.encloseLocations([northwest, southEast]);
+					// use the tile extent with a small buffer, assuming that the
+					// layer tiles and clips
+					buffer.margin(.0001).extent(ext);
 				} else {
 					// otherwise, use the world as the extent
-					buffer.margin(null).extent().world();
+					buffer.margin(null).extent(null);
 				}
 
 				if (single || e.features.length == 1) {
 					// if we have a single feature, adjust just that one
-					buffer.apply(e.features[0]);
+					buffer.apply(e.features[0].data);
 				} else {
 					// But if we have multiple geometries, create a GeometryCollection,
 					// buffer that, and set the layer's features to that single feature.
@@ -709,7 +718,7 @@ if (!geoff) var geoff = {};
 			return outline;
 		};
 
-		return maps;
+		return polymaps;
 	})();
 
 
