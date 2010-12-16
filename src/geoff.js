@@ -13,11 +13,42 @@ if (typeof module !== "undefined" && module.exports) {
 	};
 
  	/**
+	 * Convert a GeoJSON geometry coordinate [x,y] array to an x/y
+	 * object.
+	 */
+ 	geoff.ctoxy = function(coord) {
+		return {x: coord[0], y: coord[1]};
+	};
+
+ 	/**
 	 * Convert a WGS94 object with "lat" and "lon" attributes to a GeoJSON
 	 * geometry coordinate [x,y] array.
 	 */
  	geoff.lltoc = function(latlon) {
 		return [latlon.lon, latlon.lat];
+	};
+
+ 	/**
+	 * Convert a lat/lon object to a point object with "x" and "y"
+	 * attributes (corresponding to lon and lat, respectively).
+	 */
+ 	geoff.lltoxy = function(latlon) {
+		return {x: latlon.lon, y: latlon.lat};
+	};
+
+ 	/**
+	 * Convert an x/y object to a GeoJSON geometry coordinate [x,y]
+	 * array.
+	 */
+ 	geoff.xytoc = function(xy) {
+		return [xy.x, xy.y];
+	};
+
+ 	/**
+	 * Convert an x/y object to a lat/lon object.
+	 */
+ 	geoff.xytoll = function(xy) {
+		return {lat: xy.y, lon: xy.x};
 	};
 
  	/**
