@@ -236,10 +236,10 @@ if (typeof module !== "undefined" && module.exports) {
 		extent.southwest = function(latlon) {
 			if (arguments.length) {
 				extent.min.lon = latlon.lon;
-				extent.max.lat = latlon.lat;
+				extent.min.lat = latlon.lat;
 				return extent;
 			} else {
-				return {lat: extent.max.lat, lon: extent.min.lon};
+				return {lat: extent.min.lat, lon: extent.min.lon};
 			}
 		};
 
@@ -587,7 +587,7 @@ if (typeof module !== "undefined" && module.exports) {
 				? apply(geoff.feature.clone(feature), ext)
 				: apply(feature, ext);
 		};
-		
+
 		return buffer;
 	};
 
